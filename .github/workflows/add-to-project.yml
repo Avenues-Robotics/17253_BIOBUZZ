@@ -19,13 +19,25 @@ on:
 
 env:
   ORG: Avenues-Robotics
-  PROJECT_NUMBER: "9"   # from the project's URL: .../orgs/Avenues-Robotics/projects/<this number>
-  TEAM_NAME: "Tritonics"          # must exactly match one of the options on the project's "Team" field
+  PROJECT_NUMBER: "9"
+  TEAM_NAME: "Tritonics"
 
 jobs:
   add-to-project:
     runs-on: ubuntu-latest
     steps:
+      - name: Verify project access
+        # Isolates the problem: if this fails with "unknown owner type" too,
+        # it confirms the issue is PROJECT_PAT/auth, not anything specific
+        # to the item-add call - the workflow stops here with a clearer
+        # trail in the logs instead of failing one step later.
+        env:
+          GH_TOKEN: ${{ secrets.PROJECT_PAT }}
+        run: |
+          set -euo pipefail
+          gh --version
+          gh project view "$PROJECT_NUMBER" --owner "$ORG" --format json --jq '.id'
+
       - name: Add issue to project
         id: add
         env:
