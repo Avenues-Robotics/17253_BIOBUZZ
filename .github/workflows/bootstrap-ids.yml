@@ -1,0 +1,70 @@
+# Copy this to .github/workflows/bootstrap-ids.yml in ONE repo only (any
+# repo the PROJECT_PAT secret can reach - it doesn't touch issues or the
+# board, it just reads IDs). Run it once during setup, and again any time
+# you add or rename a team option on the "Team" field.
+#
+# Why this exists: gh project item-add / item-edit re-resolve the org
+# owner from scratch on every run, and calling gh project twice in a row
+# within a couple seconds can trip GitHub's abuse-detection on
+# user/organization lookups, which gh then reports as a confusing
+# "unknown owner type" error. Resolving the IDs once here, and having the
+# real per-issue workflow use those fixed IDs directly (see
+# add-to-project.yml), avoids that lookup happening on every issue.
+
+name: Bootstrap project field IDs
+
+on:
+  workflow_dispatch:
+    inputs:
+      project_number:
+        description: "Org project number (the number at the end of its URL)"
+        required: true
+        default: "9"
+
+env:
+  ORG: Avenues-Robotics
+
+jobs:
+  project-id:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Get project ID
+        env:
+          GH_TOKEN: ${{ secrets.PROJECT_PAT }}
+        run: |
+          set -euo pipefail
+          gh project view "${{ inputs.project_number }}" --owner "$ORG" --format json \
+            --jq '"PROJECT_ID = " + .id'
+
+  field-ids:
+    needs: project-id
+    runs-on: ubuntu-latest
+    steps:
+      - name: Pause before the next gh project call
+        # See the note at the top of this file - this gap is what keeps
+        # this second gh project --owner call from tripping the same
+        # "unknown owner type" issue the per-issue workflow was hitting.
+        run: sleep 10
+
+      - name: Get Team field ID and each option's ID
+        env:
+          GH_TOKEN: ${{ secrets.PROJECT_PAT }}
+        run: |
+          set -euo pipefail
+          gh project field-list "${{ inputs.project_number }}" --owner "$ORG" --format json \
+            --jq '.fields[] | select(.name=="Team") |
+              "TEAM_FIELD_ID = " + .id,
+              (.options[] | "  option \"" + .name + "\" = " + .id)'
+
+# After this run finishes: Actions tab -> this run -> open the "field-ids"
+# job's log. You'll see lines like:
+#
+#   PROJECT_ID = PVT_xxxxxxxxxxxxxxxxxxxx
+#   TEAM_FIELD_ID = PVTSSF_xxxxxxxxxxxxxxxxxxxx
+#     option "Tritonics" = 47fc9ee0
+#     option "Iron Eagles" = 98a2c113
+#
+# Copy PROJECT_ID and TEAM_FIELD_ID into every repo's add-to-project.yml
+# (same for all of them), and copy the matching team's option id into that
+# repo's TEAM_OPTION_ID (different per repo). If a step fails, it's the
+# same flaky call this workflow is designed to dodge - just re-run it.
