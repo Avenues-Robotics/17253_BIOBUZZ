@@ -9,7 +9,10 @@
 # can do this (unlike the built-in "Auto-add to project" workflow, which
 # is capped at 1 repo on GitHub Free / 5 on Pro-Team / 20 on Enterprise).
 #
-# One-time setup required before this will work - see SETUP.md.
+# One-time setup required before this will work - see SETUP.md. In
+# particular, the PROJECT_PAT token needs the 'read:org' scope, not just
+# 'project' - without it, every step below fails with a confusing
+# "unknown owner type" error instead of a clear permissions message.
 
 name: Add issue to org project
 
@@ -19,23 +22,24 @@ on:
 
 env:
   ORG: Avenues-Robotics
-  PROJECT_NUMBER: "9"
-  TEAM_NAME: "Tritonics"
+  PROJECT_NUMBER: "REPLACE_WITH_YOUR_PROJECT_NUMBER"   # from the project's URL: .../orgs/Avenues-Robotics/projects/<this number>
+  TEAM_NAME: "REPLACE_WITH_THIS_REPO_TEAM_NAME"          # must exactly match one of the options on the project's "Team" field
 
 jobs:
   add-to-project:
     runs-on: ubuntu-latest
     steps:
       - name: Verify project access
-        # Isolates the problem: if this fails with "unknown owner type" too,
-        # it confirms the issue is PROJECT_PAT/auth, not anything specific
-        # to the item-add call - the workflow stops here with a clearer
-        # trail in the logs instead of failing one step later.
+        # Isolates problems early: if this fails, check the "Missing
+        # required token scopes" line in its `gh auth status` output (or
+        # add one - see the troubleshooting note in SETUP.md) before
+        # assuming anything is wrong with the later steps.
         env:
           GH_TOKEN: ${{ secrets.PROJECT_PAT }}
         run: |
           set -euo pipefail
           gh --version
+          gh auth status
           gh project view "$PROJECT_NUMBER" --owner "$ORG" --format json --jq '.id'
 
       - name: Add issue to project
