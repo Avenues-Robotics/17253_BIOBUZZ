@@ -22,8 +22,8 @@ on:
 
 env:
   ORG: Avenues-Robotics
-  PROJECT_NUMBER: "REPLACE_WITH_YOUR_PROJECT_NUMBER"   # from the project's URL: .../orgs/Avenues-Robotics/projects/<this number>
-  TEAM_NAME: "REPLACE_WITH_THIS_REPO_TEAM_NAME"          # must exactly match one of the options on the project's "Team" field
+  PROJECT_NUMBER: "9"   # from the project's URL: .../orgs/Avenues-Robotics/projects/<this number>
+  TEAM_NAME: "Tritonics"          # must exactly match one of the options on the project's "Team" field
 
 jobs:
   add-to-project:
