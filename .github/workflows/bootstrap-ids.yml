@@ -28,6 +28,23 @@ jobs:
   project-id:
     runs-on: ubuntu-latest
     steps:
+      - name: Check that PROJECT_PAT is actually reaching this repo
+        # "unknown owner type" is also what gh prints when the token it got
+        # is empty or invalid - it can't tell that apart from an ambiguous
+        # owner name. This step checks that specifically, before the real
+        # gh project call, so a bad/missing token shows up as a clear
+        # message here instead of the confusing one below.
+        env:
+          GH_TOKEN: ${{ secrets.PROJECT_PAT }}
+        run: |
+          set -euo pipefail
+          if [ -z "${GH_TOKEN:-}" ]; then
+            echo "::error::PROJECT_PAT came through empty in this repo. This almost always means this repo isn't in the org secret's 'Selected repositories' list. Org page -> Settings -> Secrets and variables -> Actions -> PROJECT_PAT -> add this repo, then re-run."
+            exit 1
+          fi
+          gh auth status
+          echo "This token belongs to: $(gh api user --jq .login)"
+
       - name: Get project ID
         env:
           GH_TOKEN: ${{ secrets.PROJECT_PAT }}
